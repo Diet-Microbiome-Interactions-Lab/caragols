@@ -31,15 +31,15 @@ except:
     pass
 
 
-#------------------------------------
-#-- Check that we're using Python 3 |
-#------------------------------------
-assert(sys.version_info.major == 3)
+# ------------------------------------
+# -- Check that we're using Python 3 |
+# ------------------------------------
+assert (sys.version_info.major == 3)
 
 
-#-------------------------------
-#-- Get a handle to a logger.  |
-#-------------------------------
+# -------------------------------
+# -- Get a handle to a logger.  |
+# -------------------------------
 logger = logging.getLogger(__name__)
 
 
@@ -177,7 +177,7 @@ class CxNode(object):
                 viewer.log(severity, msg)
 
         else:  # -- Assuming that viewer is a stream.
-            #-- Echo the complete configuration.
+            # -- Echo the complete configuration.
             for k in sorted(self.allKeys):
                 v = self[k]
                 viewer.write("{key:40s}: {value}\n".format(
@@ -218,7 +218,7 @@ class CxNode(object):
             return (self.flattened == other.flattened)
 
         if isinstance(other, pycollections.Mapping):
-            #-- Flatten the other mapping.
+            # -- Flatten the other mapping.
             flatter = tuple([(k, other[k]) for k in sorted(other.keys())])
             return (self.flattened == flatter)
 
@@ -236,11 +236,11 @@ class CxNode(object):
         .get(key, default) - answers the value of self[key] or default
         """
         if len(args) == 1:
-            #-- .get(key)
+            # -- .get(key)
             return self[args[0]]
 
         if len(args) == 2:
-            #-- .get(key, default)
+            # -- .get(key, default)
             if isinstance(args[0], str):
                 k, default = args
                 try:
@@ -248,13 +248,13 @@ class CxNode(object):
                 except KeyError:
                     return default
 
-            #-- .get(form, key)
+            # -- .get(form, key)
             if callable(args[0]):
                 xform, k = args
                 return xform(self[k])
 
         if len(args) == 3:
-            #-- .get(form, key, default)
+            # -- .get(form, key, default)
             xform, k, default = args
             return xform(self.get(k, default))
 
@@ -295,8 +295,8 @@ class CxNode(object):
             logger.debug("CxNode/load: reading configuration from %s" % fname)
 
             if form is None:
-                #-- Try to guess the form from the file's suffix.
-                #-- Here, we get the suffix into a canonical form of 'YAML', 'JSON', etc.
+                # -- Try to guess the form from the file's suffix.
+                # -- Here, we get the suffix into a canonical form of 'YAML', 'JSON', etc.
                 lemma, suffix = os.path.splitext(fname)
                 suffix = suffix.strip().upper()
                 if suffix.startswith('.'):
@@ -324,6 +324,7 @@ class CxNode(object):
                     "CxNode/load: I don't know how to handle files of form '{}'".format(form))
 
             if blob is not None:
+                print(f'Updating...')
                 self.update(blob)
         else:
             logger.error(
@@ -334,6 +335,7 @@ class CxNode(object):
     def update(self, d):
         if d is not None:
             if isinstance(d, CxNode):
+                print(f'Instance of CxNode')
                 for k in d.keys:
                     self[k] = d[k]
                 return self
@@ -401,7 +403,7 @@ class CxNode(object):
                 op = 'SCANNING'
 
                 if token[0] == '^':
-                    #-- load the file
+                    # -- load the file
                     path = token[1:]
                     self.load(path)
 
@@ -434,10 +436,10 @@ class CxNode(object):
                         op = 'SREM'
 
                 else:
-                    #---------------------------------------------------------
-                    #-- the token doesn't appear to have any sed semantics,  |
-                    #-- so add it to the "naked" list.                       |
-                    #---------------------------------------------------------
+                    # ---------------------------------------------------------
+                    # -- the token doesn't appear to have any sed semantics,  |
+                    # -- so add it to the "naked" list.                       |
+                    # ---------------------------------------------------------
                     nakeds.append(token)
 
             elif state == 'SET':
@@ -462,10 +464,10 @@ class CxNode(object):
             elif state == 'BADD':
                 curval = self[key] if (key in self) else []
 
-                #----------------------------------------------------------
-                #-- if the current value is a mutable set,                |
-                #-- convert the set to a list to handle the bag semantics |
-                #----------------------------------------------------------
+                # ----------------------------------------------------------
+                # -- if the current value is a mutable set,                |
+                # -- convert the set to a list to handle the bag semantics |
+                # ----------------------------------------------------------
                 if isinstance(curval, pycollections.MutableSet):
                     self[key] = list(curval)
                     curval = self[key]

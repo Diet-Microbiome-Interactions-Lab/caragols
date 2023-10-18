@@ -9,21 +9,21 @@ The edit commmands are the same syntax and semantics as defined in the app.condo
 
 For instance, the following command line ...
 
-RGB thumbnail ^defaults ^myconf landingzone: $HOME/APPF/LZ thumbnails.Q: $HOME/APPF/Q thumbnails.ARK: $HOME/APPF/ARK thumbnails.catalog+ hello.png thumbnails.processed! thumnails.cleaned~
+RGB thumbnail ^defaults ^myconf landingzone: $HOME/APPF/LZ
+              thumbnails.Q: $HOME/APPF/Q thumbnails.ARK: $HOME/APPF/ARK
+              thumbnails.catalog+ hello.png thumbnails.processed! thumnails.cleaned~
 
-... runs the RGB program with thumbnail as the command, with the default conf updated by loading in myconf.yml and then applying the changes described in the rest of the line.
+... runs the RGB program with thumbnail as the command, with the default conf updated
+    by loading in myconf.yml and then applying the changes described in the rest of
+    the line.
 """
 import sys
 import os.path
 import glob
 import logging
 
-
-#from .app import condo
-#from escargot.app import carp
-
-import caragols.condo as condo
-import caragols.carp as carp
+from caragols.lib import carp
+from caragols.lib import condo
 
 DEFAULT_LOG_LEVEL = logging.WARN
 
@@ -41,36 +41,39 @@ class App:
         self.actions = []
         self.dispatches = []
         self._name = name
-        self.conf = condo.Condex()  # Configuration
+        print('Initializing the default configuration - condo.Condex()')
+        self.conf = condo.Condex()  # Default configuration
 
         if self.DEFAULTS:
             self.conf.update(self.DEFAULTS)
 
-        #-------------------------------------------------------------------------
-        #-- Set up basic logging before we allow for more advanced configuration |
-        #-- Any subclass specific logging can be overridden in .configure_logger |
-        #-------------------------------------------------------------------------
+        # -------------------------------------------------------------------------
+        # -- Set up basic logging before we allow for more advanced configuration |
+        # -- Any subclass specific logging can be overridden in .configure_logger |
+        # -------------------------------------------------------------------------
         self.initialize_logger()
 
-        #---------------------------------------------------------------------------
-        #-- load any configurations that are in expected places in the file system |
-        #---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        # -- load any configurations that are in expected places in the file system |
+        # ---------------------------------------------------------------------------
         self.configure()
         self.configure_logger()
 
-        #-----------------------------------------------------------------------
-        #-- the default dispatcher is loaded by reading self for .do_* methods |
-        #-----------------------------------------------------------------------
+        # -----------------------------------------------------------------------
+        # -- the default dispatcher is loaded by reading self for .do_* methods |
+        # -----------------------------------------------------------------------
         for attr in dir(self):
             if attr.startswith("do_"):
+                # print(f'Parsing {attr}')
                 action = getattr(self, attr)
                 if callable(action):
                     tokens = attr[3:].split('_')
+                    # print(f'Tokens: {tokens}; Actions: {action}')
                     self.dispatches.append((tokens, action))
 
-    #-----------------------------------
-    #-- BEGIN embedded logging methods |
-    #-----------------------------------
+    # -----------------------------------
+    # -- BEGIN embedded logging methods |
+    # -----------------------------------
     def debug(self, msg):
         self.logger.debug(msg)
 
@@ -85,9 +88,9 @@ class App:
 
     def critical(self, msg):
         self.logger.critical(msg)
-    #---------------------------------
-    #-- END embedded logging methods |
-    #---------------------------------
+    # ---------------------------------
+    # -- END embedded logging methods |
+    # ---------------------------------
 
     @property
     def name(self):
@@ -98,9 +101,9 @@ class App:
             self._name = appname
         return self._name
 
-    #--------------------------------
-    #-- BEGIN configuration methods |
-    #--------------------------------
+    # --------------------------------
+    # -- BEGIN configuration methods |
+    # --------------------------------
 
     @property
     def configuration_folders(self):
@@ -112,18 +115,24 @@ class App:
         The folders are processed by .configure( ) in the same order as returned, here.
         Any subclasses that want a different sequence should override this method.
         """
-        #-- This is the default sequence of configuration folders...
-        return ['/etc/{}'.format(self.name), os.path.expanduser('~/.config/{}'.format(self.name))]
+        # -- This is the default sequence of configuration folders...
+        return ['/etc/{}'.format(self.name),
+                os.path.expanduser('~/.config/{}'.format(self.name))]
 
     def configure(self):
-        #-- look in these folders ...
+        # -- look in these folders ...
         for folder in self.configuration_folders:
-            #-- Look for any file that matches the pattern 'conf_*.yml'
-            #-- Load any found conf files in canonical sorting order by file name.
+            print(f'Searching configuration files in folder {folder}...')
+            # -- Look for any file that matches the pattern 'conf_*.yml'
+            # -- Load any found conf files in canonical sorting order by file name.
             for confile in glob.glob(os.path.join(folder, "conf_*.yml")):
+                print(f'Looking at configuration file {confile}')
                 self.debug("looking for configuration in {}".format(confile))
+                # Instantiating a new Condex
                 nuconf = condo.Condex()
+                # Loading the new conf with the confile
                 nuconf.load(confile)
+                # Updating our configuration file based on it
                 self.conf.update(nuconf)
 
     def initialize_logger(self):
@@ -133,23 +142,23 @@ class App:
 
     def configure_logger(self):
         self.logger = logging.getLogger(self.conf.get('log.key', self.name))
-        #self.logger.setLevel( self.conf.get('log.level', DEFAULT_LOG_LEVEL) )
+        # self.logger.setLevel( self.conf.get('log.level', DEFAULT_LOG_LEVEL) )
 
         if 'log.level' in self.conf:
             grade = self.conf['log.level']
             if isinstance(grade, str):
                 if grade.isdigit():
-                    #-- looks like the log.level was given as a number, e.g. 10 (for DEBUG)
+                    # -- looks like the log.level was given as a number, e.g. 10 (for DEBUG)
                     grade = int(grade)
                 else:
-                    #-- looks like the log.level was given as a symbol, e.g. DEBUG or ERROR
-                    #-- look for the given symbol in the logging module and use NOTSET (level 0) if I can't find it.
+                    # -- looks like the log.level was given as a symbol, e.g. DEBUG or ERROR
+                    # -- look for the given symbol in the logging module and use NOTSET (level 0) if I can't find it.
                     grade = vars(logging).get(grade, logging.NOTSET)
             self.logger.setLevel(grade)
 
-    #------------------------------
-    #-- END configuration methods |
-    #------------------------------
+    # ------------------------------
+    # -- END configuration methods |
+    # ------------------------------
     @property
     def idioms(self):
         """
@@ -185,9 +194,9 @@ class App:
         else:
             return None
 
-    #----------------------------
-    #-- BEGIN app state methods |
-    #----------------------------
+    # ----------------------------
+    # -- BEGIN app state methods |
+    # ----------------------------
     def begun(self):
         """
         I am called after construction and initialization.
@@ -206,12 +215,12 @@ class App:
         """
         self.begun()
 
-        #------------------------------------------------------------------------
-        #-- scan for a matching dispatch in order of highest gravity to lowest. |
-        #-- Here, "gravity" is the number of tokens in the action, e.g.         |
-        #-- "make catalog" has a gravity of 2, while ...                        |
-        #-- "make new catalog" would have a gravity of 3.                       |
-        #------------------------------------------------------------------------
+        # ------------------------------------------------------------------------
+        # -- scan for a matching dispatch in order of highest gravity to lowest. |
+        # -- Here, "gravity" is the number of tokens in the action, e.g.         |
+        # -- "make catalog" has a gravity of 2, while ...                        |
+        # -- "make new catalog" would have a gravity of 3.                       |
+        # ------------------------------------------------------------------------
         explaining = False
         method = None
         report = None
@@ -239,10 +248,10 @@ class App:
             self.report = self.failed(
                 'bad request.\ntry using "help" command?')
 
-        #--------------------------------------------------
-        #-- If the action did not complete with a report, |
-        #-- this should be considered a crash!            |
-        #--------------------------------------------------
+        # --------------------------------------------------
+        # -- If the action did not complete with a report, |
+        # -- this should be considered a crash!            |
+        # --------------------------------------------------
         if getattr(self, 'report', None) is None:
             self.report = self.crashed("no report returned by action!")
 
@@ -265,10 +274,10 @@ class App:
         """
         pass
 
-    #-----------------------------------------------------------------
-    #-- BEGIN completion methods                                     |
-    #-- All do_* methods should end by calling one of these methods. |
-    #-----------------------------------------------------------------
+    # -----------------------------------------------------------------
+    # -- BEGIN completion methods                                     |
+    # -- All do_* methods should end by calling one of these methods. |
+    # -----------------------------------------------------------------
 
     def succeeded(self, msg="", dex=None, **kwargs):
         repargs = kwargs.copy()
@@ -295,18 +304,18 @@ class App:
         repargs = kwargs.copy()
         repargs['body'] = msg
         repargs['data'] = dex
-        #self.report     = carp.Report.Exception(msg, **repargs)
+        # self.report     = carp.Report.Exception(msg, **repargs)
         self.report = carp.Report.Exception(**repargs)
         self.critical(msg)  # -- emit the message to our log.
         return self.report
 
-    #---------------------------
-    #-- END completion methods |
-    #---------------------------
+    # ---------------------------
+    # -- END completion methods |
+    # ---------------------------
 
-    #--------------------------------------------
-    #-- BEGIN app operation, aka "do_*" methods |
-    #--------------------------------------------
+    # --------------------------------------------
+    # -- BEGIN app operation, aka "do_*" methods |
+    # --------------------------------------------
 
     def do_explain(self, comwords, action, barewords, **kwargs):
         d = {}
@@ -340,9 +349,9 @@ class App:
         doc = "\n".join(doclines)
         return self.succeeded(doc)
 
-    #------------------------------
-    #-- END app operation methods |
-    #------------------------------
+    # ------------------------------
+    # -- END app operation methods |
+    # ------------------------------
 
 
 class TestApp(App):
