@@ -1,3 +1,16 @@
+## Installation
+
+These first commands will clone the repo and setup a python [virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment).
+
+```
+git clone git@github.com:ddeemerpurdue/caragols.git
+cd caragols
+python3.11 -m venv caragols
+source caragols/bin/activate
+pip install --upgrade pip build wheel # update standard build/packaging tools
+pip install -e ./ # more info at https://setuptools.pypa.io/en/latest/userguide/quickstart.html#development-mode
+```
+
 # Caragols Help Page
 
 Nomenclature: Named after the "escargot" (E-SCience ARGOT) library. Caragols is the Catalan word for a dish similar to escargot.

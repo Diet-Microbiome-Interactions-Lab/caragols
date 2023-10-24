@@ -395,7 +395,10 @@ class CxNode(object):
         key = None
         nakeds = []
 
+        print(f'Tokens:\n{tokens}\n')
         for token in tokens:
+            print(
+                f'CxNode/sed state is {state} working on key "{key}" ingesting {token}')
             logger.debug(
                 "CxNode/sed state is {} working on key '{}' ingesting token '{}'".format(state, key, token))
             if state == 'SCANNING':
@@ -409,6 +412,7 @@ class CxNode(object):
 
                 elif token[-1] == ':':
                     key = token[:-1]
+                    print(f'Found : --> {key}')
                     op = 'SET'
 
                 elif token[-1] == '!':
@@ -425,6 +429,7 @@ class CxNode(object):
                         op = 'BADD'
                     else:
                         key = token[:-1]
+                        print(f'Working with + --> {key}')
                         op = 'SADD'
 
                 elif token[-1] == '-':
@@ -450,7 +455,7 @@ class CxNode(object):
                 curval = self[key] if (key in self) else []
 
                 if isinstance(curval, pycollections.MutableSequence):
-                    if token not in self[key]:
+                    if token not in self.get(key):
                         self[key].append(token)
 
                 elif isinstance(curval, pycollections.MutableSet):
@@ -463,16 +468,16 @@ class CxNode(object):
 
             elif state == 'BADD':
                 curval = self[key] if (key in self) else []
-
                 # ----------------------------------------------------------
                 # -- if the current value is a mutable set,                |
-                # -- convert the set to a list to handle the bag semantics |
+                # -- convert the set to aac list to handle the bag semantics |
                 # ----------------------------------------------------------
                 if isinstance(curval, pycollections.MutableSet):
                     self[key] = list(curval)
                     curval = self[key]
 
                 if isinstance(curval, pycollections.MutableSequence):
+                    print(f'Yes, this is mutable')
                     self[key].append(token)
                 else:
                     self[key] = [curval, token]

@@ -64,12 +64,18 @@ class App:
         # -----------------------------------------------------------------------
         for attr in dir(self):
             if attr.startswith("do_"):
-                # print(f'Parsing {attr}')
+                print(f'Parsing {attr}')
                 action = getattr(self, attr)
                 if callable(action):
                     tokens = attr[3:].split('_')
-                    # print(f'Tokens: {tokens}; Actions: {action}')
+                    print(f'Tokens: {tokens}; Actions: {action}')
                     self.dispatches.append((tokens, action))
+        print(f'\nDispatches:\n{self.dispatches}')
+
+        # -----------------------------------------------------------------------
+        # -- Perform the app.run() to setup the app                             |
+        # -----------------------------------------------------------------------
+        self.run()
 
     # -----------------------------------
     # -- BEGIN embedded logging methods |
@@ -165,8 +171,10 @@ class App:
         I am the list of actions available in the form of [(gravity, tokens, action), ...]
         """
         idioms = []
+        print(f'Creating idioms...looking at\n{self.dispatches}\n')
         for tokens, action in self.dispatches:
             gravity = len(tokens)
+            print(f'Action={action}')
             idioms.append((gravity, tokens, action))
         idioms = list(sorted(idioms, reverse=True))
         return idioms
@@ -178,17 +186,21 @@ class App:
         that matches the command barewords is the list of remaining tokens that are not part of the command.
         Othwerise, I answer None.
         """
-        xtraopts = {}
+        xtraopts = {'xtraopt': 'Pass for now'}
 
         matched = False
         for gravity, tokens, action in self.idioms:
+            print(f'Analyzing idiom: {gravity}:{tokens}:{action}')
             if comargs[:gravity] == tokens:
+                print(f'Matched is true in {comargs[:gravity]} == {tokens}')
                 matched = True
                 break
 
         if matched:
             confargs = comargs[gravity:]
+            print(f'confargs: {confargs}')
             barewords = self.conf.sed(confargs)
+            print(f'Barewords:\n{barewords}\n')
             return (tokens, action, barewords, xtraopts)
 
         else:
@@ -214,6 +226,7 @@ class App:
         "explain" does not execute a method, but instead dumps the invocation request as a merged context.
         """
         self.begun()
+        print(f'\n\nSelf.begun()')
 
         # ------------------------------------------------------------------------
         # -- scan for a matching dispatch in order of highest gravity to lowest. |
@@ -231,9 +244,13 @@ class App:
             comargs = comargs[1:]
 
         matched = self.cognize(comargs)
+        print(f'Output of self.cognize {comargs}')
+        print(matched)
+        print(f'\n')
 
         if matched:
             tokens, action, barewords, xtraopts = matched
+            print(f'Yes, matched - {tokens}:{action}:{barewords}:{xtraopts}')
             self.configure_logger()
 
             if explaining:
@@ -241,6 +258,8 @@ class App:
                     tokens, action, barewords, **xtraopts)
             else:
                 try:
+                    print(
+                        f'Trying to perform the action!\n{action}\nwith {barewords} and {xtraopts}')
                     action(barewords, **xtraopts)
                 except Exception as err:
                     self.report = self.crashed(str(err))
@@ -281,8 +300,10 @@ class App:
 
     def succeeded(self, msg="", dex=None, **kwargs):
         repargs = kwargs.copy()
+        print(f'repargs: {repargs}')
         repargs['body'] = msg
         repargs['data'] = dex
+        print(f'repargs: {repargs}')
         self.report = carp.Report.Success(**repargs)
         return self.report
 
