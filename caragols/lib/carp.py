@@ -200,7 +200,7 @@ class Report:
 
     @classmethod
     def Failure(cls, **kwargs):
-        #body = response if (response is not None) else cls.DEFAULT_FAILURE_RESPONSE
+        # body = response if (response is not None) else cls.DEFAULT_FAILURE_RESPONSE
         status = ReplyStatus.Failed
         return cls(status, kwargs.get('data', None), kwargs.get('body', None))
 
