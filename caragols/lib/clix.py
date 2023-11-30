@@ -37,12 +37,14 @@ class App:
         "report.form": 'prose'
     }
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name=None, defaults=None, **kwargs):
         self.actions = []
         self.dispatches = []
         self._name = name
         print('Initializing the default configuration - condo.Condex()')
         self.conf = condo.Condex()  # Default configuration
+        if defaults:
+            self.DEFAULTS = defaults
 
         if self.DEFAULTS:
             self.conf.update(self.DEFAULTS)
@@ -62,6 +64,7 @@ class App:
         # -----------------------------------------------------------------------
         # -- the default dispatcher is loaded by reading self for .do_* methods |
         # -----------------------------------------------------------------------
+        print(f'\n(ii) Starting attr parsing phase.')
         for attr in dir(self):
             if attr.startswith("do_"):
                 print(f'Parsing {attr}')
@@ -70,7 +73,8 @@ class App:
                     tokens = attr[3:].split('_')
                     print(f'Tokens: {tokens}; Actions: {action}')
                     self.dispatches.append((tokens, action))
-        print(f'\nDispatches:\n{self.dispatches}')
+        print(f'\n!!!Found the following dispatches:\n{self.dispatches}')
+        print('Finished parsing attr stage.\n')
 
         # -----------------------------------------------------------------------
         # -- Perform the app.run() to setup the app                             |
@@ -131,7 +135,7 @@ class App:
             print(f'Searching configuration files in folder {folder}...')
             # -- Look for any file that matches the pattern 'conf_*.yml'
             # -- Load any found conf files in canonical sorting order by file name.
-            for confile in glob.glob(os.path.join(folder, "conf_*.yml")):
+            for confile in glob.glob(os.path.join(folder, "conf*.yml")):
                 print(f'Looking at configuration file {confile}')
                 self.debug("looking for configuration in {}".format(confile))
                 # Instantiating a new Condex
@@ -140,6 +144,7 @@ class App:
                 nuconf.load(confile)
                 # Updating our configuration file based on it
                 self.conf.update(nuconf)
+        print(f'Completed configuration phase.\n')
 
     def initialize_logger(self):
         logging.basicConfig()
@@ -171,10 +176,9 @@ class App:
         I am the list of actions available in the form of [(gravity, tokens, action), ...]
         """
         idioms = []
-        print(f'Creating idioms...looking at\n{self.dispatches}\n')
+        print(f'Creating idioms...looking at:\n{self.dispatches}')
         for tokens, action in self.dispatches:
             gravity = len(tokens)
-            print(f'Action={action}')
             idioms.append((gravity, tokens, action))
         idioms = list(sorted(idioms, reverse=True))
         return idioms
@@ -204,6 +208,7 @@ class App:
             return (tokens, action, barewords, xtraopts)
 
         else:
+            print('# ~~~~~ Completed Cognize phase ~~~~~ #\n\n')
             return None
 
     # ----------------------------
@@ -225,8 +230,8 @@ class App:
         I make a special case for the verb "explain".
         "explain" does not execute a method, but instead dumps the invocation request as a merged context.
         """
+        print(f'\n(iii) Starting the self.run() phase')
         self.begun()
-        print(f'\n\nSelf.begun()')
 
         # ------------------------------------------------------------------------
         # -- scan for a matching dispatch in order of highest gravity to lowest. |
@@ -237,17 +242,15 @@ class App:
         explaining = False
         method = None
         report = None
-        comargs = sys.argv[1:]
+        comargs = sys.argv[1:]  # Super important ---> where the CL interacts
 
         if comargs and (comargs[0] == 'explain'):
             explaining = True
             comargs = comargs[1:]
-
+        print(f'{comargs=}')
         matched = self.cognize(comargs)
-        print(f'Output of self.cognize {comargs}')
-        print(matched)
-        print(f'\n')
 
+        print(f'(iv) Starting the matching phase. {matched=}')
         if matched:
             tokens, action, barewords, xtraopts = matched
             print(f'Yes, matched - {tokens}:{action}:{barewords}:{xtraopts}')
@@ -264,6 +267,7 @@ class App:
                 except Exception as err:
                     self.report = self.crashed(str(err))
         else:
+            print(f'No matching, which is the cause of the failure!')
             self.report = self.failed(
                 'bad request.\ntry using "help" command?')
 
@@ -271,7 +275,11 @@ class App:
         # -- If the action did not complete with a report, |
         # -- this should be considered a crash!            |
         # --------------------------------------------------
+        # TODO: Where did this report get built from?
+        print(f'{self.report}\n\n\n')
+        print(self.report.status)
         if getattr(self, 'report', None) is None:
+            print(f'Report is none!!!')
             self.report = self.crashed("no report returned by action!")
 
         form = self.conf.get('report.form', 'prose')
@@ -300,10 +308,8 @@ class App:
 
     def succeeded(self, msg="", dex=None, **kwargs):
         repargs = kwargs.copy()
-        print(f'repargs: {repargs}')
         repargs['body'] = msg
         repargs['data'] = dex
-        print(f'repargs: {repargs}')
         self.report = carp.Report.Success(**repargs)
         return self.report
 
