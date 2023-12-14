@@ -41,7 +41,7 @@ class App:
         self.actions = []
         self.dispatches = []
         self._name = name
-        print('Initializing the default configuration - condo.Condex()')
+        print('\n(i) Configuration Setup')
         self.conf = condo.Condex()  # Default configuration
         if defaults:
             self.DEFAULTS = defaults
@@ -64,17 +64,17 @@ class App:
         # -----------------------------------------------------------------------
         # -- the default dispatcher is loaded by reading self for .do_* methods |
         # -----------------------------------------------------------------------
-        print(f'\n(ii) Starting attr parsing phase.')
+        print(f'\n\n(ii) Attr Parsing')
         for attr in dir(self):
             if attr.startswith("do_"):
-                print(f'Parsing {attr}')
                 action = getattr(self, attr)
                 if callable(action):
                     tokens = attr[3:].split('_')
-                    print(f'Tokens: {tokens}; Actions: {action}')
+
                     self.dispatches.append((tokens, action))
-        print(f'\n!!!Found the following dispatches:\n{self.dispatches}')
-        print('Finished parsing attr stage.\n')
+
+        tokens = [' '.join(v[0]) for v in self.dispatches]
+        print(f'Dispatches found:\n{tokens}')
 
         # -----------------------------------------------------------------------
         # -- Perform the app.run() to setup the app                             |
@@ -144,7 +144,6 @@ class App:
                 nuconf.load(confile)
                 # Updating our configuration file based on it
                 self.conf.update(nuconf)
-        print(f'Completed configuration phase.\n')
 
     def initialize_logger(self):
         logging.basicConfig()
@@ -176,11 +175,11 @@ class App:
         I am the list of actions available in the form of [(gravity, tokens, action), ...]
         """
         idioms = []
-        print(f'Creating idioms...looking at:\n{self.dispatches}')
         for tokens, action in self.dispatches:
             gravity = len(tokens)
             idioms.append((gravity, tokens, action))
         idioms = list(sorted(idioms, reverse=True))
+        print(f'Created {len(idioms)} idioms')
         return idioms
 
     def cognize(self, comargs):
@@ -194,21 +193,19 @@ class App:
 
         matched = False
         for gravity, tokens, action in self.idioms:
-            print(f'Analyzing idiom: {gravity}:{tokens}:{action}')
             if comargs[:gravity] == tokens:
-                print(f'Matched is true in {comargs[:gravity]} == {tokens}')
+                print(f'Matched {comargs[:gravity]}')
                 matched = True
                 break
 
         if matched:
             confargs = comargs[gravity:]
-            print(f'confargs: {confargs}')
             barewords = self.conf.sed(confargs)
-            print(f'Barewords:\n{barewords}\n')
+            print(f'Confargs: {confargs}')
+            print(f'Barewords: {barewords}')
             return (tokens, action, barewords, xtraopts)
 
         else:
-            print('# ~~~~~ Completed Cognize phase ~~~~~ #\n\n')
             return None
 
     # ----------------------------
@@ -230,7 +227,8 @@ class App:
         I make a special case for the verb "explain".
         "explain" does not execute a method, but instead dumps the invocation request as a merged context.
         """
-        print(f'\n(iii) Starting the self.run() phase')
+        print(f'\n\n(iii) Running')
+        # TODO: Tracking the build of the application before running.
         self.begun()
 
         # ------------------------------------------------------------------------
@@ -247,13 +245,11 @@ class App:
         if comargs and (comargs[0] == 'explain'):
             explaining = True
             comargs = comargs[1:]
-        print(f'{comargs=}')
         matched = self.cognize(comargs)
 
-        print(f'(iv) Starting the matching phase. {matched=}')
+        print(f'\n\n(iv) Matching & Action. {matched=}')
         if matched:
             tokens, action, barewords, xtraopts = matched
-            print(f'Yes, matched - {tokens}:{action}:{barewords}:{xtraopts}')
             self.configure_logger()
 
             if explaining:
@@ -261,25 +257,21 @@ class App:
                     tokens, action, barewords, **xtraopts)
             else:
                 try:
-                    print(
-                        f'Trying to perform the action!\n{action}\nwith {barewords} and {xtraopts}')
+                    print(f'Running executable:\n\n#-----Executable~Start-----#\n')
                     action(barewords, **xtraopts)
+                    print(f'\n#-----Executable~Complete-----#\n')
                 except Exception as err:
                     self.report = self.crashed(str(err))
         else:
-            print(f'No matching, which is the cause of the failure!')
             self.report = self.failed(
-                'bad request.\ntry using "help" command?')
+                'Bad request due to no "matched".\ntry using "help" command?')
 
         # --------------------------------------------------
         # -- If the action did not complete with a report, |
         # -- this should be considered a crash!            |
         # --------------------------------------------------
-        # TODO: Where did this report get built from?
-        print(f'{self.report}\n\n\n')
-        print(self.report.status)
+
         if getattr(self, 'report', None) is None:
-            print(f'Report is none!!!')
             self.report = self.crashed("no report returned by action!")
 
         form = self.conf.get('report.form', 'prose')

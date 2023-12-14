@@ -51,7 +51,6 @@ class ReplyStatus(tuple):
 
             if isinstance(arg, str):
                 if arg.isdigit():
-                    print(f'Is digit')
                     return cls(int(arg))
 
             if isinstance(arg, (tuple, list)):
@@ -108,12 +107,12 @@ class Report:
         self.data = data
         self.body = body if body is not None else ""
 
-    # @property
-    # def flattened(self):
-    #     """
-    #     Answers a tuple of the form ((keyname, keyval), ...) for each key in self.
-    #     """
-    #     return tuple( [(str(k), self[k]) for k in self.allKeys] )
+    @property
+    def flatten(self):
+        """
+        Answers a tuple of the form ((keyname, keyval), ...) for each key in self.
+        """
+        return tuple([(str(k), self[k]) for k in self.allKeys])
 
     def toDEX(self, opts=None):
         return self.boxed(opts=opts)
@@ -122,7 +121,6 @@ class Report:
         return self.toMD(include_data_section=False)
 
     def toMD(self, **kwargs):
-        print(kwargs)
         title = getattr(self, 'title', self.status.title)
 
         title_stanza = "# {}".format(title)
@@ -139,8 +137,8 @@ class Report:
 
         return '\n'.join(stanzas)
 
-    def toROWS(self):
-        return flatten(self.toDEX())
+    def toROWs(self):
+        return self.flatten(self.toDEX())
 
     def toYAML(self, **kwargs):
         opts = {'default_flow_style': False}

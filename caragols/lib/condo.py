@@ -324,7 +324,6 @@ class CxNode(object):
                     "CxNode/load: I don't know how to handle files of form '{}'".format(form))
 
             if blob is not None:
-                print(f'Updating...')
                 self.update(blob)
         else:
             logger.error(
@@ -335,7 +334,6 @@ class CxNode(object):
     def update(self, d):
         if d is not None:
             if isinstance(d, CxNode):
-                print(f'Instance of CxNode')
                 for k in d.keys:
                     self[k] = d[k]
                 return self
@@ -395,16 +393,14 @@ class CxNode(object):
         key = None
         nakeds = []
 
-        print(f'Tokens:\n{tokens}\n')
         for token in tokens:
-            print(
-                f'CxNode/sed state is {state} working on key "{key}" ingesting {token}')
             logger.debug(
                 "CxNode/sed state is {} working on key '{}' ingesting token '{}'".format(state, key, token))
+            if token.endswith((':', '!', '~', '+', '-')) or token.startswith('^'):
+                state = 'SCANNING'
             if state == 'SCANNING':
                 # -- default to continuing the scanning state, unless otherwise set.
                 op = 'SCANNING'
-
                 if token[0] == '^':
                     # -- load the file
                     path = token[1:]
@@ -412,7 +408,6 @@ class CxNode(object):
 
                 elif token[-1] == ':':
                     key = token[:-1]
-                    print(f'Found : --> {key}')
                     op = 'SET'
 
                 elif token[-1] == '!':
@@ -429,7 +424,6 @@ class CxNode(object):
                         op = 'BADD'
                     else:
                         key = token[:-1]
-                        print(f'Working with + --> {key}')
                         op = 'SADD'
 
                 elif token[-1] == '-':
@@ -439,7 +433,6 @@ class CxNode(object):
                     else:
                         key = token[:-1]
                         op = 'SREM'
-
                 else:
                     # ---------------------------------------------------------
                     # -- the token doesn't appear to have any sed semantics,  |
@@ -467,7 +460,9 @@ class CxNode(object):
                 op = 'SCANNING'
 
             elif state == 'BADD':
-                curval = self[key] if (key in self) else []
+                self[key] = [] if not (key in self) else self[key]
+                curval = self[key]
+
                 # ----------------------------------------------------------
                 # -- if the current value is a mutable set,                |
                 # -- convert the set to aac list to handle the bag semantics |
@@ -477,12 +472,11 @@ class CxNode(object):
                     curval = self[key]
 
                 if isinstance(curval, pycollections.MutableSequence):
-                    print(f'Yes, this is mutable')
                     self[key].append(token)
                 else:
                     self[key] = [curval, token]
 
-                op = 'SCANNING'
+                # op = 'SCANNING'
 
             elif state == 'SREM':
                 if key in self:
