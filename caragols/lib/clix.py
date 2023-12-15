@@ -37,7 +37,9 @@ class App:
         "report.form": 'prose'
     }
 
-    def __init__(self, name=None, defaults=None, **kwargs):
+    def __init__(self, name=None, run_mode="cli", comargs=['help'], defaults=None, **kwargs):
+        self.run_mode = run_mode
+        self.comargs = comargs
         self.actions = []
         self.dispatches = []
         self._name = name
@@ -79,7 +81,7 @@ class App:
         # -----------------------------------------------------------------------
         # -- Perform the app.run() to setup the app                             |
         # -----------------------------------------------------------------------
-        self.run()
+        self.run(run_mode=run_mode)
 
     # -----------------------------------
     # -- BEGIN embedded logging methods |
@@ -219,7 +221,7 @@ class App:
         """
         pass
 
-    def run(self):
+    def run(self, run_mode):
         """
         I am the central dispatcher.
         I gather arguments from the command line,
@@ -240,12 +242,21 @@ class App:
         explaining = False
         method = None
         report = None
-        comargs = sys.argv[1:]  # Super important ---> where the CL interacts
+        # if run_mode.lower() == 'cli':
+        #     # Super important ---> where the CL interacts
+        #     comargs = sys.argv[1:]
+        # elif run_mode.lower() == 'gui':
+        #     # TODO: Figure out how to account for sys.argv[1:]
+        #     comargs = ['help']
+        # else:
+        #     # Idea --> in init has comargs=sys.argv[1:] if run_mode=='cli
+        #     sys.exit(1)
+        #     #                      comargs={???} if run_mode=='gui'
 
-        if comargs and (comargs[0] == 'explain'):
+        if self.comargs and (self.comargs[0] == 'explain'):
             explaining = True
-            comargs = comargs[1:]
-        matched = self.cognize(comargs)
+            self.comargs = self.comargs[1:]
+        matched = self.cognize(self.comargs)
 
         print(f'\n\n(iv) Matching & Action. {matched=}')
         if matched:
@@ -270,20 +281,23 @@ class App:
         # -- If the action did not complete with a report, |
         # -- this should be considered a crash!            |
         # --------------------------------------------------
+        # TODO: Alter the below code to sort based off of CLI vs. GUI modes
 
         if getattr(self, 'report', None) is None:
             self.report = self.crashed("no report returned by action!")
 
         form = self.conf.get('report.form', 'prose')
-        sys.stdout.write(self.report.formatted(form))
-        sys.stdout.write('\n')
 
-        self.done()
-
-        if self.report.status.indicates_failure:
-            sys.exit(1)
-        else:
-            sys.exit(0)
+        if run_mode == "cli":
+            sys.stdout.write(self.report.formatted(form))
+            sys.stdout.write('\n')
+            self.done()
+            if self.report.status.indicates_failure:
+                sys.exit(1)
+            else:
+                sys.exit(0)
+        elif run_mode == "gui":
+            return {'status': 'success'}
 
     def done(self):
         """
