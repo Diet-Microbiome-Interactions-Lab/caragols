@@ -43,7 +43,8 @@ class App:
         self.actions = []
         self.dispatches = []
         self._name = name
-        print('\n(i) Configuration Setup')
+        if self.mode == 'debug':
+            print('\n(i) Configuration Setup')
         self.conf = condo.Condex()  # Default configuration
         if defaults:
             self.DEFAULTS = defaults
@@ -66,7 +67,8 @@ class App:
         # -----------------------------------------------------------------------
         # -- the default dispatcher is loaded by reading self for .do_* methods |
         # -----------------------------------------------------------------------
-        print(f'\n\n(ii) Attr Parsing')
+        if self.mode == 'debug':
+            print(f'\n\n(ii) Attr Parsing')
         for attr in dir(self):
             if attr.startswith("do_"):
                 action = getattr(self, attr)
@@ -76,7 +78,8 @@ class App:
                     self.dispatches.append((tokens, action))
 
         tokens = [' '.join(v[0]) for v in self.dispatches]
-        print(f'Dispatches found:\n{tokens}')
+        if self.mode == 'debug':
+            print(f'Dispatches found:\n{tokens}')
 
         # -----------------------------------------------------------------------
         # -- Perform the app.run() to setup the app                             |
@@ -134,11 +137,13 @@ class App:
     def configure(self):
         # -- look in these folders ...
         for folder in self.configuration_folders:
-            print(f'Searching configuration files in folder {folder}...')
+            if self.mode == 'debug':
+                print(f'Searching configuration files in folder {folder}...')
             # -- Look for any file that matches the pattern 'conf_*.yml'
             # -- Load any found conf files in canonical sorting order by file name.
             for confile in glob.glob(os.path.join(folder, "conf*.yml")):
-                print(f'Looking at configuration file {confile}')
+                if self.mode == 'debug':
+                    print(f'Looking at configuration file {confile}')
                 self.debug("looking for configuration in {}".format(confile))
                 # Instantiating a new Condex
                 nuconf = condo.Condex()
@@ -181,7 +186,8 @@ class App:
             gravity = len(tokens)
             idioms.append((gravity, tokens, action))
         idioms = list(sorted(idioms, reverse=True))
-        print(f'Created {len(idioms)} idioms')
+        if self.mode == 'debug':
+            print(f'Created {len(idioms)} idioms')
         return idioms
 
     def cognize(self, comargs):
@@ -196,15 +202,17 @@ class App:
         matched = False
         for gravity, tokens, action in self.idioms:
             if comargs[:gravity] == tokens:
-                print(f'Matched {comargs[:gravity]}')
+                if self.mode == 'debug':
+                    print(f'Matched {comargs[:gravity]}')
                 matched = True
                 break
 
         if matched:
             confargs = comargs[gravity:]
             barewords = self.conf.sed(confargs)
-            print(f'Confargs: {confargs}')
-            print(f'Barewords: {barewords}')
+            if self.mode == 'debug':
+                print(f'Confargs: {confargs}')
+                print(f'Barewords: {barewords}')
             return (tokens, action, barewords, xtraopts)
 
         else:
@@ -229,7 +237,8 @@ class App:
         I make a special case for the verb "explain".
         "explain" does not execute a method, but instead dumps the invocation request as a merged context.
         """
-        print(f'\n\n(iii) Running')
+        if self.mode == 'debug':
+            print(f'\n\n(iii) Running')
         # TODO: Tracking the build of the application before running.
         self.begun()
 
@@ -258,7 +267,8 @@ class App:
             self.comargs = self.comargs[1:]
         matched = self.cognize(self.comargs)
 
-        print(f'\n\n(iv) Matching & Action. {matched=}')
+        if self.mode == 'debug':
+            print(f'\n\n(iv) Matching & Action. {matched=}')
         if matched:
             tokens, action, barewords, xtraopts = matched
             self.configure_logger()
@@ -268,9 +278,12 @@ class App:
                     tokens, action, barewords, **xtraopts)
             else:
                 try:
-                    print(f'Running executable:\n\n#-----Executable~Start-----#\n')
+                    if self.mode == 'debug':
+                        print(
+                            f'Running executable:\n\n#-----Executable~Start-----#\n')
                     action(barewords, **xtraopts)
-                    print(f'\n#-----Executable~Complete-----#\n')
+                    if self.mode == 'debug':
+                        print(f'\n#-----Executable~Complete-----#\n')
                 except Exception as err:
                     self.report = self.crashed(str(err))
         else:

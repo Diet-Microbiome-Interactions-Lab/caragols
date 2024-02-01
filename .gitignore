@@ -1,3 +1,4 @@
+caragols/lib/toad.code-workspace
 __pycache__/
 toad/tests/*
 *.py[cod]
