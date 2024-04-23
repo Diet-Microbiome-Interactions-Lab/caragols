@@ -291,7 +291,10 @@ class CxNode(object):
             self.children[k.head][k.tail] = v
 
     def load(self, fname, form=None):
-        if os.path.exists(fname):
+        if isinstance(fname, dict):
+            blob = fname
+            self.update(blob)
+        elif os.path.exists(fname):
             logger.debug("CxNode/load: reading configuration from %s" % fname)
 
             if form is None:
@@ -302,6 +305,8 @@ class CxNode(object):
                 if suffix.startswith('.'):
                     suffix = suffix[1:]
                 form = suffix
+            elif form == dict:
+                pass
             else:
                 form = form.strip().upper()
 
@@ -318,7 +323,6 @@ class CxNode(object):
                     blob = yaml.safe_load(open(fname))
                 else:
                     logger.error("CxNode/read: I cannot read yaml files")
-
             else:
                 raise Exception(
                     "CxNode/load: I don't know how to handle files of form '{}'".format(form))

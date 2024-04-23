@@ -22,6 +22,8 @@ import os.path
 import glob
 import logging
 
+from toad import mongo
+
 from caragols.lib import carp
 from caragols.lib import condo
 
@@ -38,6 +40,7 @@ class App:
     }
 
     def __init__(self, name=None, run_mode="cli", comargs=['help'], defaults=None, **kwargs):
+        self.user_id = kwargs.get('user_id', None)
         self.run_mode = run_mode
         self.comargs = comargs
         self.actions = []
@@ -51,6 +54,13 @@ class App:
 
         if self.DEFAULTS:
             self.conf.update(self.DEFAULTS)
+        
+        if self.run_mode == 'gui':
+            self.user_document = mongo.db.Users.find_one({'dbeUUID': self.user_id})
+            if not self.user_document:
+                return self.failed('GUI called without a user logged in.\nTrying logging in first!')
+            print(f'Found user document:\n{self.user_document}\n')
+
 
         # -------------------------------------------------------------------------
         # -- Set up basic logging before we allow for more advanced configuration |
@@ -135,22 +145,38 @@ class App:
                 os.path.expanduser('~/.config/{}'.format(self.name))]
 
     def configure(self):
-        # -- look in these folders ...
-        for folder in self.configuration_folders:
-            if self.mode == 'debug':
-                print(f'Searching configuration files in folder {folder}...')
-            # -- Look for any file that matches the pattern 'conf_*.yml'
-            # -- Load any found conf files in canonical sorting order by file name.
-            for confile in glob.glob(os.path.join(folder, "conf*.yml")):
+        '''
+        I still want a hierarchical parsing of the folder structures in the GUI
+        mode, as the app should come with some sort of default configuration. This
+        could even be hardcoded in the code for now?
+        '''
+        if self.run_mode == 'gui':
+            # If using the GUI, we want to search the mongo.db based on the user
+            print(f'\nFor config, in gui with user {self.user_document['handle']}\n')
+            nuconf = condo.Condex()
+            print(f'Loading in via mongodb user document...')
+            nuconf.load(self.user_document['configuration'], dict)
+
+            self.conf.update(nuconf)
+
+
+        else:
+            # -- look in these folders ...
+            for folder in self.configuration_folders:
                 if self.mode == 'debug':
-                    print(f'Looking at configuration file {confile}')
-                self.debug("looking for configuration in {}".format(confile))
-                # Instantiating a new Condex
-                nuconf = condo.Condex()
-                # Loading the new conf with the confile
-                nuconf.load(confile)
-                # Updating our configuration file based on it
-                self.conf.update(nuconf)
+                    print(f'Searching configuration files in folder {folder}...')
+                # -- Look for any file that matches the pattern 'conf_*.yml'
+                # -- Load any found conf files in canonical sorting order by file name.
+                for confile in glob.glob(os.path.join(folder, "conf*.yml")):  #TODO: Change this to pull from the database
+                    if self.mode == 'debug':
+                        print(f'Looking at configuration file {confile}')
+                    self.debug("looking for configuration in {}".format(confile))
+                    # Instantiating a new Condex
+                    nuconf = condo.Condex()
+                    # Loading the new conf with the confile
+                    nuconf.load(confile)
+                    # Updating our configuration file based on it
+                    self.conf.update(nuconf)
 
     def initialize_logger(self):
         logging.basicConfig()
@@ -213,6 +239,7 @@ class App:
             if self.mode == 'debug':
                 print(f'Confargs: {confargs}')
                 print(f'Barewords: {barewords}')
+                # print(f'Xtraopts: {xtraopts}')
             return (tokens, action, barewords, xtraopts)
 
         else:
