@@ -41,7 +41,7 @@ class App:
     # Where default configs can be found
     template_config_path = Path(__file__).parent / 'config-template.yaml'
     config_filename = 'config.yaml'  # FIXME:
-    default_config_path = Path.home() / '.config' / 'bioinformatics-tools' / config_filename
+    default_config_path = Path.home() / '.config' / 'caragols' / config_filename
 
     def __init__(self, name=None, run_mode="cli", filetype=None, match=True):
         '''config, logging, and command line parsing'''
@@ -66,7 +66,7 @@ class App:
         # ---- the default dispatcher is loaded by reading self for .do_* methods ---- #
         SessionLogger.log_header_section(LOGGER, '(iii) Initializing Dispatches (do_) methods')
         self.dispatches: list[Dispatch] = []
-        self.init_do_dispatches()
+        self.init_do_dispatches()  # TODO: This should be a method that we can invoke from the extending class
 
         # ------------------ setup the app to be ready for app.run() ----------------- #
         self.prepare_for_run(run_mode)
@@ -95,7 +95,7 @@ class App:
     # --------------------------------
     @classmethod
     def _initialize_user_config(cls) -> None:
-        '''Inits or verifies ~/.config/bioinformatics-tools/config.yaml'''
+        '''Inits or verifies ~/.config/caragols/config.yaml'''
         LOGGER.debug('Running _initialize_user_config')
         if not cls.default_config_path.exists():
             cls.default_config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -238,6 +238,7 @@ class App:
                 LOGGER.exception('error unpacking cli?')
                 self.report = self.crashed(str(err))
         if not self.match_cmd_to_process:
+            LOGGER.warning('Did no match self.match_cmd_to_process')
             pass  #TODO: Hack here for dane_wf to not worry about matching. Later we may want
         # workflow.do_example and then have that be how we map commands to files, instead of the
         # workflowmapper object in workflow_tools.main.py
@@ -255,7 +256,7 @@ class App:
         # TODO: STARTHERE --> We run this action like this BUT in fasta.do_gc_content, for example, we use the self.conf to get the variables, not the
         # arguments to the method.
         if self.matched_dispatch:
-            self.matched_dispatch.action()  # Running the do_ method we found
+            self.matched_dispatch.action()  # IMPORTANT Running the do_ method we found
         # Each do_ method should end with a self.succeeded() message and self.failed() if not
 
         SessionLogger.log_header_section(LOGGER, "(vi): Running the final report")

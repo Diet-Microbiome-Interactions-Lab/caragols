@@ -1,3 +1,2 @@
 console_log_level: DEBUG
-directory: ~/.config/bioinformatics-tools/logs
 use_user_subdir: true
