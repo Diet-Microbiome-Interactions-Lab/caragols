@@ -1,3 +1,13 @@
+# caragols
+
+Named after the "escargot" (E-SCience ARGOT) library. Caragols is the Catalan word for a dish similar to escargot.
+
+This library takes care of 3 main functions when writing python code:
+
+1. configuration
+2. returning report objects
+3. command line extension
+
 ## Installation
 
 These first commands will clone the repo and setup a python [virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#creating-a-virtual-environment).
@@ -11,13 +21,13 @@ pip install --upgrade pip build wheel # update standard build/packaging tools
 pip install -e ./ # more info at https://setuptools.pypa.io/en/latest/userguide/quickstart.html#development-mode
 ```
 
-# Caragols Help Page
-
-Nomenclature: Named after the "escargot" (E-SCience ARGOT) library. Caragols is the Catalan word for a dish similar to escargot.
-
 ## Purpose
 
 The basic idea is to rely on JSON or YAML documents for default and/or complex configuration. The command arguments are interpreted as a sequence of edit commands to the configuration object. The edit commmands are the same syntax and semantics as defined in the app.condo.Condex.sed method.
+
+On top of the configuration and command line extensibility, the app produces standardized reports as outputs, as well as has a method to register functions that integrate with help messaging. Caragols will search all Python Classes that inherit from it and look for any function following the pattern "do_*", and register them as a valid function.
+
+Lastly, Caragols takes care of some logging configuration to ensure data provenance and reproducibility.
 
 ## Composition:
 
@@ -44,15 +54,16 @@ This class provides a report version of the ReplyStatus. It can be initialized i
 
 By default, this looks for configuration files in the following locations:
 
-1. /etc/_app_name_/conf\_\*.yml
-2. /Users/_username_/.config/_app_name_/conf\_\*.yml
+1. /etc/_app_name_/conf\_\*.yaml
+2. /Users/_username_/.config/_app_name_/conf\_\*.yaml
+   1. commonly denoted '~/.config/caragols/config.yaml
 
 Once it finds those, it then updates/overrides the default configuration values.
 In order to access these configuration variables, you can use the following syntax:
 
 ```python
 $ print(myapp.conf.get('lab'))
->>> lindeman
+>>> dane
 $ print(myapp.conf.get('log'))
 >>> caragols.lib.condo.CxNode object
 $ print(myapp.conf.get('log.level'))
