@@ -38,4 +38,5 @@ Changelog = "https://github.com/ddeemerpurdue/caragols/blob/main/CHANGELOG.md"
 # include = ["DataNetwork"]
 
 [tool.setuptools.dynamic]
-readme = {file = ["README.md"]}
+readme = {file = ["README.md"]}                                                    
+version = {attr = "caragols.__version__"}
