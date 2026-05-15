@@ -1,24 +1,21 @@
 """
-caragols.carp
-
 I implement reporting tools for the Common App Reporting Prototocol (CARP)
 """
-import operator
-import io
 import csv
+import io
 import json
+import operator
 import traceback
-
 import yaml
 
 
 class ReplyStatus(tuple):
     DEFAULT_CATEGORY_GLOSS = {
-        '1': 'FYI',
-        '2': 'Success',
-        '3': 'Inconclusive',
-        '4': 'Failure',
-        '5': 'Fault'
+        '1': 'ℹ️ FYI',
+        '2': '✅ Success',
+        '3': '❔ Inconclusive',
+        '4': '❌ Failure',
+        '5': '💥 Fault'
     }
 
     DEFAULT_CODE_GLOSS = {
@@ -107,17 +104,25 @@ class Report:
         self.data = data
         self.body = body if body is not None else ""
 
-    @property
-    def flatten(self):
+    def __str__(self):
+        # NOTE: this is for making json logging config a bit easier. If this gets in the way, it can be removed
+        return json.dumps(self.boxed())
+
+    @staticmethod
+    def flatten(data_dict):
         """
-        Answers a tuple of the form ((keyname, keyval), ...) for each key in self.
+        Flattens a dictionary into a list of (key, value) tuples.
         """
-        return tuple([(str(k), self[k]) for k in self.allKeys])
+        if isinstance(data_dict, dict):
+            return [(str(k), v) for k, v in data_dict.items()]
+        return []
 
     def toDEX(self, opts=None):
+        '''Data EXchange'''
         return self.boxed(opts=opts)
 
     def toPROSE(self, **kwargs):
+        '''Human-readable, mainly for stdout/stderr'''
         return self.toMD(include_data_section=False)
 
     def toMD(self, **kwargs):
@@ -126,7 +131,7 @@ class Report:
         title_stanza = "# {}".format(title)
         status_stanza = "## Status\n{}: {}".format(
             self.status.code, self.status.gloss)
-        response_stanza = "## Response\n{}".format(str(self.body))
+        response_stanza = "## Response 💬\n{}".format(str(self.body))
 
         stanzas = [title_stanza, status_stanza, response_stanza]
 
@@ -154,9 +159,9 @@ class Report:
         rows = self.toROWs()
 
         dst = io.StringIO()
-        with csv.writer(dst, quoting=csv.QUOTE_NONNUMERIC) as doc:
-            for row in rows:
-                csv.writerow(row)
+        writer = csv.writer(dst, quoting=csv.QUOTE_NONNUMERIC)
+        for row in rows:
+            writer.writerow(row)
 
         return dst.getvalue()
 

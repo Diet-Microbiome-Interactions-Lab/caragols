@@ -1,4 +1,5 @@
 """
+CONfiguration DOer
 caragols.condo
 
 I provide a nested mapping object, useful for configuration, etc.
@@ -16,32 +17,19 @@ conf['some.other.key'] = 'else'
 print(conf['some.other.key'])
 print(conf['some']['other']['key'])
 """
+from pathlib import Path
 import sys
 import os
 import os.path
 import collections.abc as pycollections
 import json
-import datetime
 import fnmatch
 import logging
+import yaml
 
-try:
-    import yaml
-except:
-    pass
+assert (sys.version_info.major == 3)  # Check python3
 
-
-# ------------------------------------
-# -- Check that we're using Python 3 |
-# ------------------------------------
-assert (sys.version_info.major == 3)
-
-
-# -------------------------------
-# -- Get a handle to a logger.  |
-# -------------------------------
-logger = logging.getLogger(__name__)
-
+LOGGER = logging.getLogger(__name__)
 
 class ftuple(tuple):
     """
@@ -165,23 +153,12 @@ class CxNode(object):
         self.name = name
         self.value = value
 
-    def show(self, viewer=None, *args, **kwargs):
-        if viewer is None:
-            return self.show(sys.stderr, *args, **kwargs)
-
-        elif isinstance(viewer, logging.Logger):
-            severity = kwargs.get('level', logging.DEBUG)
-            for k in sorted(self.allKeys):
-                v = self[k]
-                msg = "{key}:{value}".format(key=str(k), value=v)
-                viewer.log(severity, msg)
-
-        else:  # -- Assuming that viewer is a stream.
-            # -- Echo the complete configuration.
-            for k in sorted(self.allKeys):
-                v = self[k]
-                viewer.write("{key:40s}: {value}\n".format(
-                    key=str(k), value=v))
+    def show(self) -> str:
+        output = ''
+        for k in sorted(self.allKeys):
+            v = self[k]
+            output += "{key:40s}: {value}\n".format(key=str(k), value=v)
+        return output
 
     def translate(self, k, xlator, **kwargs):
         """
@@ -292,7 +269,7 @@ class CxNode(object):
 
     def load(self, fname, form=None):
         if os.path.exists(fname):
-            logger.debug("CxNode/load: reading configuration from %s" % fname)
+            LOGGER.debug("CxNode/load: reading configuration from %s", fname)
 
             if form is None:
                 # -- Try to guess the form from the file's suffix.
@@ -308,26 +285,29 @@ class CxNode(object):
             JSONs = ['JSON', 'JSN']
             YAMLs = ['YAML', 'YML']
 
+            file_content = Path(fname).read_text()
             blob = None
 
+            LOGGER.debug('Config content: \n %s', file_content)
+
             if form in JSONs:
-                blob = json.load(open(fname))
+                blob = json.loads(file_content)
 
             elif form in YAMLs:
                 if 'yaml' in sys.modules:
-                    blob = yaml.safe_load(open(fname))
+                    with Path(fname).open() as f:
+                        blob = yaml.safe_load(f)
                 else:
-                    logger.error("CxNode/read: I cannot read yaml files")
+                    LOGGER.error("CxNode/read: I cannot read yaml files")
 
             else:
-                raise Exception(
+                raise ValueError(
                     "CxNode/load: I don't know how to handle files of form '{}'".format(form))
 
             if blob is not None:
                 self.update(blob)
         else:
-            logger.error(
-                'CxNode/read: I cannot find the specified file: %s' % fname)
+            LOGGER.error('CxNode/read: I cannot find the specified file: %s', fname)
 
         return self
 
@@ -379,7 +359,6 @@ class CxNode(object):
     def sed(self, tokens):
         """
         Interpet the given list of tokens as an edit stream (aka "sed").
-
         ^file (LOAD) reads the given file name into the configuration
         key: (SET) sets a nested key to some value
         key+ (SADD) adds a value to the key (set semantics)
@@ -394,19 +373,18 @@ class CxNode(object):
         nakeds = []
 
         for token in tokens:
-            logger.debug(
-                "CxNode/sed state is {} working on key '{}' ingesting token '{}'".format(state, key, token))
-            if token.endswith((':', '!', '~', '+', '-')) or token.startswith('^'):
+            LOGGER.debug(
+                "CxNode/sed --> token: %s | state: %s | key: %s", token, state, key)
+            if token.endswith((':', '!', '~', '+', '-', '^')):
                 state = 'SCANNING'
             if state == 'SCANNING':
-                # -- default to continuing the scanning state, unless otherwise set.
-                op = 'SCANNING'
-                if token[0] == '^':
-                    # -- load the file
-                    path = token[1:]
+                LOGGER.debug('SCANNING %s...', token)
+                op = None
+                if token[-1] == '^':
+                    path = token[:-1]
                     self.load(path)
 
-                elif token[-1] == ':':
+                if token[-1] == ':':
                     key = token[:-1]
                     op = 'SET'
 
@@ -445,19 +423,16 @@ class CxNode(object):
                 op = 'SCANNING'
 
             elif state == 'SADD':
-                curval = self[key] if (key in self) else []
-
-                if isinstance(curval, pycollections.MutableSequence):
-                    if token not in self.get(key):
-                        self[key].append(token)
-
-                elif isinstance(curval, pycollections.MutableSet):
-                    self[key].add(token)
-
+                if key not in self:
+                    self[key] = set()
                 else:
-                    self[key] = [curval, token]
-
-                op = 'SCANNING'
+                    curval = self[key]
+                    if not isinstance(curval, set):
+                        if isinstance(curval, (list, tuple)):
+                            self[key] = set(curval)
+                        else:
+                            self[key] = {curval}
+                self[key].add(token)
 
             elif state == 'BADD':
                 self[key] = [] if not (key in self) else self[key]
@@ -475,8 +450,6 @@ class CxNode(object):
                     self[key].append(token)
                 else:
                     self[key] = [curval, token]
-
-                # op = 'SCANNING'
 
             elif state == 'SREM':
                 if key in self:
@@ -508,6 +481,24 @@ class CxNode(object):
             else:
                 d[str(k.head)] = self[k.head].toJDN()
         return d
+
+    def to_nested_dict(self):
+        """
+        Convert CxNode to a proper nested Python dictionary.
+
+        Unlike .flattened which creates flat keys with dots (e.g., 'compute.cluster_default.account'),
+        this returns a proper nested dict structure: {'compute': {'cluster_default': {'account': ...}}}
+
+        Returns:
+            dict: Nested dictionary representation of the configuration
+        """
+        result = {}
+        for k, v in self.children.items():
+            if isinstance(v, CxNode):
+                result[k] = v.to_nested_dict()  # Recursive for nested CxNodes
+            else:
+                result[k] = v
+        return result
 
 
 def Condex(*args, **kwargs):
