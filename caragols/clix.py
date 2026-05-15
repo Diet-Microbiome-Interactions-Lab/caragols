@@ -70,6 +70,7 @@ class App:
 
         # ------------------ setup the app to be ready for app.run() ----------------- #
         self.prepare_for_run(run_mode)
+        self.on_cli_ready()
         SessionLogger.log_header_section(LOGGER, 'End of CLIX initialization')
 
     def init_do_dispatches(self):
@@ -268,8 +269,8 @@ class App:
 
         if self.run_mode == "cli":
             LOGGER.info('\n📄 Report Generated:\n%s', self.report.formatted(form))
-            # Emit structured report as JSON for API parsing
-            print(f'__REPORT__:{self.report.toJSON()}', flush=True)
+            if self.conf.get('report.emit_json', False):
+                print(f'__REPORT__:{self.report.toJSON()}', flush=True)
             self.done()
             if self.report.status.indicates_failure:
                 sys.exit(1)
@@ -317,6 +318,46 @@ class App:
         self.report = carp.Report.Failure(**repargs)
         return self.report
 
+    def _exit_on_report(self):
+        '''Exit with code 1 if report indicates failure, 0 otherwise.'''
+        self.done()
+        sys.exit(1 if (self.report and self.report.status.indicates_failure) else 0)
+
+    def _setup_cli(self):
+        '''Generic CLI setup: handle help, unmatched dispatch, and file init.
+
+        Note: on_cli_ready() is called during super().__init__(), so subclass
+        __init__ has not yet run. Subclasses should not rely on instance state
+        set after super().__init__() when overriding _setup_file().
+        '''
+        self.file_path = None
+        self.file_name = None
+        form = self.conf.get('report.form', 'prose')
+
+        if not self.matched_dispatch:
+            LOGGER.info('%s \n', self.report.formatted(form))
+            self._exit_on_report()
+
+        if '--help' in sys.argv:
+            pass  # file_path and file_name already None
+        elif 'help' in self.matched_dispatch.tokens[0]:
+            self.run()
+        else:
+            self._setup_file()
+
+    def _setup_file(self):
+        '''Hook for subclasses to handle file argument setup after CLI is ready.'''
+        pass
+
+    def on_cli_ready(self):
+        '''Hook called after CLI setup is complete. Override in subclasses.
+
+        Note: fires during super().__init__(), before the subclass __init__
+        continues — subclass class variables are available but instance state
+        set after super().__init__() is not.
+        '''
+        self._setup_cli()
+
     def crashed(self, msg="", dex=None, **kwargs):
         repargs = kwargs.copy()
         repargs['body'] = msg
@@ -338,4 +379,5 @@ class App:
                     doclines.append(line)
                 doclines.append('\n')
         doc = "\n".join(doclines)
+        print(doc)
         return self.succeeded(doc)
