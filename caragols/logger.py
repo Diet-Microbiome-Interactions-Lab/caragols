@@ -67,6 +67,12 @@ def config_logging_for_app(app_name: str = 'app'):
                 "formatter": "caragols_basicFormatter",
                 "stream": sys.stdout,
             },
+            "caragols_infoConsoleHandler": {
+                "level": "INFO",
+                "class": "logging.StreamHandler",
+                "formatter": "caragols_basicFormatter",
+                "stream": sys.stdout,
+            },
             "caragols_plaintextFileHandler": {
                 "level": "DEBUG",
                 "class": "logging.handlers.RotatingFileHandler",
@@ -88,6 +94,11 @@ def config_logging_for_app(app_name: str = 'app'):
             app_name: {
                 "level": "DEBUG",
                 "handlers": ["caragols_consoleHandler", "caragols_plaintextFileHandler", "caragols_jsonFileHandler"],
+                "propagate": False,
+            },
+            "caragols": {
+                "level": "DEBUG",
+                "handlers": ["caragols_infoConsoleHandler", "caragols_plaintextFileHandler", "caragols_jsonFileHandler"],
                 "propagate": False,
             },
         },
